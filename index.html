@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock vs Playdoh Mindset Game for Kids</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for Kids -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Grandstander:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rock: {
+                            light: '#a0aec0',
+                            DEFAULT: '#718096',
+                            dark: '#4a5568',
+                            bg: '#f7fafc',
+                            border: '#cbd5e0'
+                        },
+                        playdoh: {
+                            pink: '#ff69b4',
+                            light: '#fbcfe8',
+                            DEFAULT: '#ec4899',
+                            yellow: '#facc15',
+                            bg: '#fff5f7',
+                            border: '#f472b6'
+                        }
+                    },
+                    fontFamily: {
+                        kids: ['Fredoka', 'sans-serif'],
+                        title: ['Grandstander', 'cursive'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 50%, #fce7f3 100%);
+            min-height: 100vh;
+        }
+
+        .title-font {
+            font-family: 'Grandstander', cursive;
+        }
+
+        /* Cute Card Styles */
+        .card-active {
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            touch-action: none;
+        }
+
+        .card-active:hover {
+            transform: translateY(-4px) scale(1.02);
+        }
+
+        .card-selected {
+            ring: 6px #f59e0b;
+            border-color: #f59e0b !important;
+            transform: scale(1.04) !important;
+            box-shadow: 0 15px 30px rgba(245, 158, 11, 0.3) !important;
+        }
+
+        /* Bucket Drop Zones */
+        .drop-bucket {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .drop-bucket.drag-over, .drop-bucket.tap-highlight {
+            transform: scale(1.04);
+            box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Playdough Squish Animation */
+        @keyframes squishPlaydoh {
+            0%, 100% { transform: scale(1, 1); }
+            30% { transform: scale(1.3, 0.7); }
+            50% { transform: scale(0.8, 1.2); }
+            70% { transform: scale(1.1, 0.9); }
+        }
+
+        .anim-squish {
+            animation: squishPlaydoh 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Rock Bump Animation */
+        @keyframes rockBump {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-8px) rotate(-4deg); }
+            75% { transform: translateY(4px) rotate(4deg); }
+        }
+
+        .anim-rock {
+            animation: rockBump 0.4s ease-in-out;
+        }
+
+        /* Gentle Shake for Mistakes */
+        @keyframes gentleShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        .shake-gentle {
+            animation: gentleShake 0.4s ease-in-out;
+        }
+
+        /* Star Particle Burst Styles */
+        .star-particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+            animation: starBurst 0.75s ease-out forwards;
+        }
+
+        @keyframes starBurst {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(0.5) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tw-x), var(--tw-y)) scale(1.4) rotate(180deg);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-800">
+
+    <!-- Top Header -->
+    <header class="bg-white/85 backdrop-blur-md border-b-4 border-amber-300 sticky top-0 z-40 px-4 py-2.5 shadow-sm">
+        <div class="max-w-5xl mx-auto flex items-center justify-between gap-2">
+            
+            <div class="flex items-center gap-2 md:gap-3">
+                <span class="text-3xl md:text-4xl">🪨✨🌸</span>
+                <div>
+                    <h1 class="title-font text-xl md:text-2xl font-extrabold text-amber-600 leading-tight tracking-wide">
+                        Rock or Playdoh?
+                    </h1>
+                    <p class="text-xs text-slate-500 font-bold hidden sm:block">Growth Mindset Sorting for Year 1</p>
+                </div>
+            </div>
+
+            <!-- Star Counter & Controls -->
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-100 border-2 border-amber-300 px-3.5 py-1 rounded-full flex items-center gap-2 shadow-inner">
+                    <i class="fa-solid fa-star text-amber-500 text-xl animate-bounce"></i>
+                    <span id="scoreText" class="title-font text-xl font-black text-amber-700">0</span>
+                </div>
+
+                <button id="soundToggleBtn" onclick="toggleSound()" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-lg border-2 border-slate-300 transition-transform active:scale-90" title="Toggle Sound">
+                    <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                </button>
+
+                <button onclick="resetGame()" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-lg border-2 border-slate-300 transition-transform active:scale-90" title="Restart">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Game Workspace -->
+    <main class="max-w-5xl mx-auto w-full px-4 py-4 flex-grow flex flex-col justify-between items-center">
+
+        <!-- Kids Instruction Bar -->
+        <div class="w-full text-center my-1">
+            <p id="instructionHint" class="text-base md:text-lg font-extrabold text-indigo-900 bg-white/70 backdrop-blur-sm py-2 px-4 rounded-2xl border-2 border-indigo-200 shadow-sm inline-block">
+                ⭐ Drag or tap the card to sort it into the right mindset!
+            </p>
+        </div>
+
+        <!-- Statement Card Area (Center) -->
+        <div class="w-full max-w-xl my-3 min-h-[170px] flex items-center justify-center">
+            <div id="cardDeckContainer" class="w-full flex justify-center items-center">
+                <!-- Active Card Inserted Here Dynamically -->
+            </div>
+        </div>
+
+        <!-- Sorting Target Buckets: Rock vs Playdoh -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full max-w-4xl my-2">
+
+            <!-- Rock Bucket (Fixed Mindset) -->
+            <div id="rockBucket"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'rock')"
+                 onclick="handleBucketClick('rock')"
+                 class="drop-bucket bg-stone-100/90 border-4 border-dashed border-stone-400 hover:border-stone-600 rounded-3xl p-4 flex flex-col items-center justify-between min-h-[260px] shadow-md relative cursor-pointer group overflow-hidden">
+                
+                <div class="w-full text-center bg-stone-200 py-2 px-3 rounded-2xl border-2 border-stone-300 mb-2">
+                    <h2 class="title-font text-xl md:text-2xl font-black text-stone-700">Hard Rock Mindset</h2>
+                    <p class="text-xs font-bold text-stone-500">Stuck, hard & can't change!</p>
+                </div>
+
+                <!-- Cute Rock SVG Illustration -->
+                <div id="rockSvgWrapper" class="w-32 h-28 my-1 flex justify-center items-center">
+                    <svg viewBox="0 0 160 120" class="w-full h-full drop-shadow-md">
+                        <!-- Rock Body -->
+                        <path d="M 30,90 Q 20,45 60,20 Q 110,15 135,50 Q 145,90 120,100 Q 60,105 30,90 Z" fill="#9AA5B1" stroke="#486581" stroke-width="5" stroke-linejoin="round"/>
+                        <!-- Rock Shading -->
+                        <path d="M 40,85 Q 70,25 115,30" stroke="#7B8794" stroke-width="4" fill="none" stroke-linecap="round"/>
+                        <path d="M 70,55 L 95,85" stroke="#7B8794" stroke-width="3" stroke-linecap="round"/>
+                        <!-- Cute Kawaii Eyes -->
+                        <circle cx="65" cy="55" r="6" fill="#102A43"/>
+                        <circle cx="95" cy="55" r="6" fill="#102A43"/>
+                        <circle cx="67" cy="53" r="2.5" fill="#FFFFFF"/>
+                        <circle cx="97" cy="53" r="2.5" fill="#FFFFFF"/>
+                        <!-- Neutral Mouth -->
+                        <line x1="72" y1="72" x2="88" y2="72" stroke="#102A43" stroke-width="4" stroke-linecap="round"/>
+                        <!-- Grass Tufts at Bottom -->
+                        <path d="M 20,100 L 25,82 L 32,100 L 38,85 L 45,100 Z" fill="#57C148" stroke="#2F855A" stroke-width="2"/>
+                        <path d="M 115,102 L 122,86 L 128,102 L 135,88 L 140,102 Z" fill="#57C148" stroke="#2F855A" stroke-width="2"/>
+                    </svg>
+                </div>
+
+                <div id="rockCardsContainer" class="w-full flex flex-col gap-1.5 z-10 my-1">
+                    <!-- Dropped cards summary list -->
+                </div>
+
+                <div class="w-full py-2 bg-stone-300/60 rounded-xl text-stone-700 text-xs font-black text-center tracking-wider uppercase border border-stone-300">
+                    👇 Tap or Drop Rock Thoughts Here
+                </div>
+            </div>
+
+            <!-- Playdoh Bucket (Growth Mindset) -->
+            <div id="playdohBucket"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event, 'playdoh')"
+                 onclick="handleBucketClick('playdoh')"
+                 class="drop-bucket bg-pink-50/90 border-4 border-dashed border-pink-400 hover:border-pink-500 rounded-3xl p-4 flex flex-col items-center justify-between min-h-[260px] shadow-md relative cursor-pointer group overflow-hidden">
+                
+                <div class="w-full text-center bg-pink-200 py-2 px-3 rounded-2xl border-2 border-pink-300 mb-2">
+                    <h2 class="title-font text-xl md:text-2xl font-black text-pink-700">Squishy Playdoh Mindset</h2>
+                    <p class="text-xs font-bold text-pink-600">Flexible, stretchy & grows with practice!</p>
+                </div>
+
+                <!-- Cute Playdoh SVG Illustration -->
+                <div id="playdohSvgWrapper" class="w-36 h-28 my-1 flex justify-center items-center">
+                    <svg viewBox="0 0 180 120" class="w-full h-full drop-shadow-md">
+                        <!-- Background colorful dough balls -->
+                        <circle cx="35" cy="45" r="22" fill="#38BDF8" stroke="#0284C7" stroke-width="3"/>
+                        <circle cx="65" cy="30" r="22" fill="#FACC15" stroke="#CA8A04" stroke-width="3"/>
+                        <circle cx="115" cy="30" r="22" fill="#4ADE80" stroke="#16A34A" stroke-width="3"/>
+                        <circle cx="145" cy="45" r="22" fill="#FB923C" stroke="#EA580C" stroke-width="3"/>
+
+                        <!-- Giant Squishy Main Pink Playdough Ball -->
+                        <path d="M 40,75 Q 35,45 90,40 Q 145,45 140,75 Q 145,105 90,105 Q 35,105 40,75 Z" fill="#FF69B4" stroke="#DB2777" stroke-width="5"/>
+                        <!-- Dough Highlight -->
+                        <path d="M 60,52 Q 90,46 120,52" stroke="#FFD1DC" stroke-width="4" stroke-linecap="round" fill="none"/>
+                        <!-- Kawaii Eyes -->
+                        <circle cx="72" cy="70" r="6" fill="#831843"/>
+                        <circle cx="108" cy="70" r="6" fill="#831843"/>
+                        <circle cx="74" cy="68" r="2.5" fill="#FFFFFF"/>
+                        <circle cx="110" cy="68" r="2.5" fill="#FFFFFF"/>
+                        <!-- Cute Big Happy Mouth -->
+                        <path d="M 75,82 Q 90,96 105,82 Z" fill="#831843"/>
+                        <!-- Cheeks -->
+                        <circle cx="60" cy="78" r="4" fill="#F43F5E" opacity="0.7"/>
+                        <circle cx="120" cy="78" r="4" fill="#F43F5E" opacity="0.7"/>
+                    </svg>
+                </div>
+
+                <div id="playdohCardsContainer" class="w-full flex flex-col gap-1.5 z-10 my-1">
+                    <!-- Dropped cards summary list -->
+                </div>
+
+                <div class="w-full py-2 bg-pink-200/80 rounded-xl text-pink-800 text-xs font-black text-center tracking-wider uppercase border border-pink-300">
+                    👇 Tap or Drop Playdoh Thoughts Here
+                </div>
+            </div>
+
+        </div>
+
+        <!-- End Celebration Modal -->
+        <div id="endGameModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full text-center shadow-2xl border-4 border-amber-300 animate-bounce-in">
+                
+                <div class="w-24 h-24 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center text-5xl mx-auto mb-3 shadow-inner">
+                    🌟
+                </div>
+
+                <h2 class="title-font text-3xl font-black text-amber-600 mb-2">
+                    Super Job!
+                </h2>
+                <p class="text-slate-600 font-bold text-base mb-4 leading-snug">
+                    You learned that our brains are like <span class="text-pink-600 font-extrabold">Squishy Playdoh</span>—we can grow and change every time we try!
+                </p>
+
+                <div class="bg-amber-50 p-4 rounded-2xl border-2 border-amber-200 mb-6 flex justify-center items-center gap-2">
+                    <span class="text-amber-800 font-extrabold text-lg">Stars Earned:</span>
+                    <span id="modalFinalScore" class="title-font text-3xl font-black text-amber-600">0</span>
+                    <span class="text-2xl">⭐</span>
+                </div>
+
+                <button onclick="resetGame()" class="w-full py-4 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 text-slate-900 title-font text-xl font-black rounded-2xl shadow-lg border-b-4 border-amber-600 transition-transform active:scale-95">
+                    Play Again! 🔄
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="py-2 text-center text-xs font-bold text-slate-500 bg-white/50 border-t border-slate-200">
+        Mindset Sorting Game • Made for Early Readers & Year 1 🌟
+    </footer>
+
+    <!-- Audio Synthesizer Script -->
+    <script>
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'cheerfulPop') {
+                // Cheerful bright pop synth sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(350, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'rockClunk') {
+                // Bright pop with low thud finish
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(400, now);
+                osc1.frequency.exponentialRampToValueAtTime(750, now + 0.08);
+
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(160, now + 0.05);
+                osc2.frequency.exponentialRampToValueAtTime(60, now + 0.2);
+
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.1);
+                osc2.start(now + 0.05);
+                osc2.stop(now + 0.22);
+            } else if (type === 'playdohSquish') {
+                // Extra cheerful bubbly pop sequence
+                [523.25, 659.25, 783.99].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.05);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.3, now + i * 0.05 + 0.08);
+                    gain.gain.setValueAtTime(0.25, now + i * 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.09);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + i * 0.05);
+                    osc.stop(now + i * 0.05 + 0.09);
+                });
+            } else if (type === 'oops') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(120, now + 0.25);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'fanfare') {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.3);
+                });
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-slate-400';
+        }
+
+        // Particle Burst Effect
+        function createStarBurst(targetBucketId) {
+            const bucket = document.getElementById(targetBucketId);
+            if (!bucket) return;
+
+            const rect = bucket.getBoundingClientRect();
+            const starEmojis = ['⭐', '🌟', '✨', '💫', '⚡'];
+
+            for (let i = 0; i < 10; i++) {
+                const star = document.createElement('div');
+                star.className = 'star-particle text-xl md:text-2xl';
+                star.innerText = starEmojis[Math.floor(Math.random() * starEmojis.length)];
+                
+                // Random burst directions
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 60 + Math.random() * 80;
+                const x = Math.cos(angle) * distance;
+                const y = Math.sin(angle) * distance;
+
+                star.style.left = `${rect.width / 2}px`;
+                star.style.top = `${rect.height / 3}px`;
+                star.style.setProperty('--tw-x', `${x}px`);
+                star.style.setProperty('--tw-y', `${y}px`);
+
+                bucket.appendChild(star);
+
+                // Auto remove after animation finishes
+                setTimeout(() => star.remove(), 750);
+            }
+        }
+    </script>
+
+    <!-- Game Logic Script -->
+    <script>
+        // Simplified Year 1 Statements
+        const CARDS_DATA = [
+            // Hard Rock (Fixed Mindset)
+            { id: 'r1', text: "I can't do it!", type: 'rock' },
+            { id: 'r2', text: "I give up!", type: 'rock' },
+            { id: 'r3', text: "It's too hard!", type: 'rock' },
+            { id: 'r4', text: "I am not good at this.", type: 'rock' },
+            { id: 'r5', text: "I'm not smart enough.", type: 'rock' },
+
+            // Squishy Playdoh (Growth Mindset)
+            { id: 'p1', text: "I can't do this, YET!", type: 'playdoh' },
+            { id: 'p2', text: "I will keep trying!", type: 'playdoh' },
+            { id: 'p3', text: "I will try a different way!", type: 'playdoh' },
+            { id: 'p4', text: "This takes practice, but I will get there!", type: 'playdoh' },
+            { id: 'p5', text: "How can I get better?", type: 'playdoh' },
+            { id: 'p6', text: "I am still learning!", type: 'playdoh' }
+        ];
+
+        let cardStack = [];
+        let activeCard = null;
+        let scoreStars = 0;
+
+        window.onload = function() {
+            resetGame();
+        };
+
+        function resetGame() {
+            scoreStars = 0;
+            cardStack = [...CARDS_DATA].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('rockCardsContainer').innerHTML = '';
+            document.getElementById('playdohCardsContainer').innerHTML = '';
+            document.getElementById('endGameModal').classList.add('hidden');
+            
+            updateScoreUI();
+            loadNextCard();
+        }
+
+        function updateScoreUI() {
+            document.getElementById('scoreText').innerText = scoreStars;
+        }
+
+        function loadNextCard() {
+            const container = document.getElementById('cardDeckContainer');
+            container.innerHTML = '';
+
+            if (cardStack.length === 0) {
+                activeCard = null;
+                showEndCelebration();
+                return;
+            }
+
+            activeCard = cardStack.pop();
+
+            // Render Cute Kid-Friendly Card
+            const cardEl = document.createElement('div');
+            cardEl.id = `active-card-${activeCard.id}`;
+            cardEl.setAttribute('draggable', 'true');
+            cardEl.className = 'card-active bg-white border-4 border-amber-300 hover:border-amber-400 rounded-3xl p-6 shadow-lg w-full max-w-md text-center flex flex-col items-center justify-center gap-3 relative cursor-pointer select-none';
+
+            cardEl.innerHTML = `
+                <div class="flex items-center justify-center w-full">
+                    <span class="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-100 py-1 px-3 rounded-full">
+                        Thought Card 💭
+                    </span>
+                </div>
+
+                <p class="title-font text-2xl md:text-3xl font-extrabold text-slate-800 leading-snug py-2">
+                    "${activeCard.text}"
+                </p>
+
+                <p class="text-xs font-bold text-amber-700 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
+                    💡 Drag or tap a bucket below to sort!
+                </p>
+            `;
+
+            // Card Click Event for Tap Selection
+            cardEl.onclick = function() {
+                cardEl.classList.add('card-selected');
+                playSound('cheerfulPop');
+            };
+
+            // Drag Events
+            cardEl.ondragstart = (e) => {
+                e.dataTransfer.setData('text/plain', activeCard.id);
+                cardEl.classList.add('opacity-50');
+            };
+
+            cardEl.ondragend = () => {
+                cardEl.classList.remove('opacity-50');
+            };
+
+            // Touch drag support for tablet/phones
+            setupTouchEvents(cardEl);
+
+            container.appendChild(cardEl);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetType) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            processChoice(targetType);
+        }
+
+        function handleBucketClick(targetType) {
+            if (activeCard) {
+                processChoice(targetType);
+            }
+        }
+
+        function processChoice(chosenType) {
+            if (!activeCard) return;
+
+            const isCorrect = (activeCard.type === chosenType);
+
+            if (isCorrect) {
+                scoreStars += 1;
+                updateScoreUI();
+
+                const bucketId = chosenType === 'rock' ? 'rockBucket' : 'playdohBucket';
+
+                if (chosenType === 'rock') {
+                    playSound('rockClunk');
+                    animateSvg('rockSvgWrapper', 'anim-rock');
+                } else {
+                    playSound('playdohSquish');
+                    animateSvg('playdohSvgWrapper', 'anim-squish');
+                }
+
+                // Trigger star particle burst effect around target bucket
+                createStarBurst(bucketId);
+
+                // Add to completed list under bucket
+                const container = document.getElementById(chosenType === 'rock' ? 'rockCardsContainer' : 'playdohCardsContainer');
+                const badge = document.createElement('div');
+                badge.className = `p-2 px-3 rounded-xl font-bold text-xs flex items-center justify-between border-2 ${
+                    chosenType === 'rock' ? 'bg-stone-200 border-stone-300 text-stone-800' : 'bg-pink-100 border-pink-300 text-pink-900'
+                }`;
+                badge.innerHTML = `
+                    <span>"${activeCard.text}"</span>
+                    <span>${chosenType === 'rock' ? '🪨' : '🌸'}</span>
+                `;
+                container.appendChild(badge);
+
+                loadNextCard();
+            } else {
+                playSound('oops');
+
+                const currentCardEl = document.getElementById(`active-card-${activeCard.id}`);
+                if (currentCardEl) {
+                    currentCardEl.classList.add('shake-gentle');
+                    setTimeout(() => currentCardEl.classList.remove('shake-gentle'), 450);
+                }
+            }
+        }
+
+        function animateSvg(wrapperId, className) {
+            const el = document.getElementById(wrapperId);
+            if (el) {
+                el.classList.remove(className);
+                void el.offsetWidth;
+                el.classList.add(className);
+            }
+        }
+
+        function setupTouchEvents(el) {
+            let startX = 0, startY = 0;
+
+            el.addEventListener('touchstart', (e) => {
+                const t = e.touches[0];
+                startX = t.clientX;
+                startY = t.clientY;
+            }, { passive: true });
+
+            el.addEventListener('touchend', (e) => {
+                const t = e.changedTouches[0];
+                const rockBox = document.getElementById('rockBucket').getBoundingClientRect();
+                const playdohBox = document.getElementById('playdohBucket').getBoundingClientRect();
+
+                if (t.clientX >= rockBox.left && t.clientX <= rockBox.right &&
+                    t.clientY >= rockBox.top && t.clientY <= rockBox.bottom) {
+                    processChoice('rock');
+                } else if (t.clientX >= playdohBox.left && t.clientX <= playdohBox.right &&
+                           t.clientY >= playdohBox.top && t.clientY <= playdohBox.bottom) {
+                    processChoice('playdoh');
+                }
+            });
+        }
+
+        function showEndCelebration() {
+            playSound('fanfare');
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            document.getElementById('modalFinalScore').innerText = scoreStars;
+            document.getElementById('endGameModal').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
